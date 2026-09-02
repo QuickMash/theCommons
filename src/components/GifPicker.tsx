@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import * as Icons from "lucide-react";
+import { Skeleton } from "@mantine/core";
 
 export type Gif = {
   id: string;
@@ -24,6 +26,11 @@ const appKey = "dUjSRYnwgf934YfAdCJDBq1v1CE0bJwKeozbTIdhXgeQWSfUKTuKE4MD8JlCH6SJ
 const perPage = 24;
 const endpoint = `https://api.klipy.com/api/v1/${appKey}/gifs`;
 const categoriesEndpoint = `https://api.klipy.com/api/v1/${appKey}/gifs/categories`;
+const trendingEndpoint = `${endpoint}/trending`;
+const searchEndpoint = `${endpoint}/search`;
+const skeletonRows = 4;
+const skeletonMinItemWidth = 90;
+const skeletonGap = 8;
 
 // Klipy has a customer id thing, it will be user id in prod.
 function getCustomerId(): string {
@@ -103,18 +110,18 @@ function normalizeGif(item: any, index: number): Gif | null {
   };
 }
 
-// idk
+// Klipy docs: trending uses /gifs/trending?page={page}&per_page={per_page}&customer_id={customer_id}
+// and search uses /gifs/search?page={page}&per_page={per_page}&q={q}&customer_id={customer_id}
 async function fetchGifsPage(
   query: string,
   page: number
 ): Promise<{ gifs: Gif[]; hasMore: boolean }> {
-  const trimmedQuery = query.trim();
-  const customerId = getCustomerId();
+  const trimmedQuery = query.trim(); // Possibly the worlds most descriptive name.
+  const customerId = getCustomerId(); // Maybe the second most descriptive name.
 
-  const base = trimmedQuery
-    ? `${endpoint}/search?q=${encodeURIComponent(trimmedQuery)}`
-    : `${endpoint}/trending`;
-  const url = `${base}&per_page=${perPage}&page=${page}&customer_id=${encodeURIComponent(customerId)}`;
+  const url = trimmedQuery
+    ? `${searchEndpoint}?page=${page}&per_page=${perPage}&q=${encodeURIComponent(trimmedQuery)}&customer_id=${encodeURIComponent(customerId)}`
+    : `${trendingEndpoint}?page=${page}&per_page=${perPage}&customer_id=${encodeURIComponent(customerId)}`;
 
   const response = await fetch(url, {
     method: "GET",
@@ -143,9 +150,8 @@ async function fetchGifsPage(
     .map((item: any, index: number) => normalizeGif(item, index))
     .filter((gif): gif is Gif => Boolean(gif));
 
-  // KLIPY's response doesn't reliably expose a page-count/next-page flag
-  // across all endpoints, so use "did we get a full page back" as the
-  // signal to keep paginating.
+
+  // Klipy doesnt expose a page that reliably indicates whether there are more pages, so we use the length of the returned list to determine if there are more.
   const hasMore = list.length >= perPage;
 
   return { gifs, hasMore };
@@ -191,10 +197,34 @@ export default function GifPicker({ onGifSelect }: GifPickerProps) {
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [skeletonColumns, setSkeletonColumns] = useState(3);
 
   const bodyRef = useRef<HTMLDivElement | null>(null);
 
-  // For typing
+  useEffect(() => {
+    const body = bodyRef.current;
+    if (!body) return;
+
+    const updateSkeletonColumns = () => {
+      const styles = window.getComputedStyle(body);
+      const horizontalPadding =
+        parseFloat(styles.paddingLeft) + parseFloat(styles.paddingRight);
+      const availableWidth = body.clientWidth - horizontalPadding;
+      const columns = Math.max(
+        1,
+        Math.floor((availableWidth + skeletonGap) / (skeletonMinItemWidth + skeletonGap))
+      );
+      setSkeletonColumns(columns);
+    };
+
+    updateSkeletonColumns();
+    const observer = new ResizeObserver(updateSkeletonColumns);
+    observer.observe(body);
+
+    return () => observer.disconnect();
+  }, []);
+
+  // For typing(not ts typing, like keyboard)
   const mode: "browse" | "category" | "search" = activeQuery
     ? "search"
     : activeCategory
@@ -314,11 +344,13 @@ export default function GifPicker({ onGifSelect }: GifPickerProps) {
     }
   };
 
+  // Clear Search
   const handleClearSearch = () => {
     setSearchQuery("");
     setActiveQuery("");
   };
 
+  // This is a gif, its a button secretly
   const renderGifButton = (gif: Gif) => (
     <button
       key={gif.id}
@@ -330,6 +362,14 @@ export default function GifPicker({ onGifSelect }: GifPickerProps) {
     >
       <img src={gif.preview ?? gif.url} alt={gif.title} loading="lazy" />
     </button>
+  );
+
+  const renderGifSkeletons = (count: number) => (
+    <div className="gif-grid gif-skeleton-grid" aria-label="Loading GIFs">
+      {Array.from({ length: count }, (_, index) => (
+        <Skeleton key={`gif-skeleton-${index}`} className="gif-skeleton" />
+      ))}
+    </div>
   );
 
   return (
@@ -349,7 +389,7 @@ export default function GifPicker({ onGifSelect }: GifPickerProps) {
             onClick={handleClearSearch}
             aria-label="Clear search"
           >
-            × {/* TODO: Replace with an icon, not this times symmbol out of the windows emoji picker */}
+            <Icons.X size={16} />
           </button>
         )}
       </div>
@@ -362,7 +402,7 @@ export default function GifPicker({ onGifSelect }: GifPickerProps) {
             onClick={handleBack}
             aria-label="Back to categories"
           >
-            ← Back {/* TODO: Replace with an icon, not this arrow randomly also out of the windows emoji picker */}
+            <Icons.ArrowLeft size={16} /> Back
           </button>
           <h3 className="gif-panel-title">{activeCategory!.label}</h3>
         </div>
@@ -386,7 +426,7 @@ export default function GifPicker({ onGifSelect }: GifPickerProps) {
                     loading="lazy"
                   />
                 )}
-                <span className="gif-category-label">Trending</span>
+                <span className="gif-category-label"><Icons.TrendingUp size={16} /> Trending</span>
               </button>
 
               {categories.map((category) => {
@@ -411,17 +451,22 @@ export default function GifPicker({ onGifSelect }: GifPickerProps) {
               })}
             </div>
           ) : (
-            <div className="gif-empty">Nothing to show yet</div>
+            <div className="gif-empty">No content yet</div>
           )
         ) : loading ? (
-          <div className="gif-empty gif-loading-state">Loading...</div>
+          renderGifSkeletons(skeletonColumns * skeletonRows)
         ) : gifs.length ? (
           <>
             <div className="gif-grid">{gifs.map(renderGifButton)}</div>
-            {loadingMore && <div className="gif-loading-more">Loading more...</div>}
+            {loadingMore && (
+              <>
+                {renderGifSkeletons(skeletonColumns)}
+                <div className="gif-loading-more">Loading more...</div>
+              </>
+            )}
           </>
         ) : (
-          <div className="gif-empty">No GIFs found</div>
+          <div className="gif-empty"><Icons.FileX size={16} /> No GIFs found</div>
         )}
       </div>
     </div>

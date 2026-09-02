@@ -625,7 +625,8 @@ $gp-radius: 8px;
   width: 100%;
 }
 
-.gif-item {
+.gif-item,
+.gif-skeleton {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -638,8 +639,11 @@ $gp-radius: 8px;
   border: none;
   border-radius: $gp-radius;
   overflow: hidden;
-  cursor: pointer;
   background: transparent;
+}
+
+.gif-item {
+  cursor: pointer;
   transition: transform 150ms $ease-standard, box-shadow 150ms $ease-standard;
 
   img {
@@ -703,6 +707,16 @@ $gp-radius: 8px;
   font-size: 13px;
 }
 
+.gif-skeleton-grid {
+  min-height: 0;
+}
+
+.gif-skeleton {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: $gp-radius;
+}
+
 .gif-empty {
   display: flex;
   align-items: center;
@@ -741,4 +755,28 @@ $gp-radius: 8px;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+}
+
+.server-menu-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid transparent;
+  background-color: transparent;
+  padding: 4px;
+  border-radius: 50%;
+  color: var(--mantine-color-text);
+  transition: background-color 180ms $ease-standard, color 180ms $ease-standard;
+}
+
+.server-menu-btn:hover {
+  border-color: var(--mantine-color-gray-7);
+  background: #00000010;
+}
+
+.server-list {
+  height: 4rem;
+  position: static;
 }

@@ -1,4 +1,13 @@
-import { Modal, Text, Anchor, Button, Menu } from "@mantine/core";
+import {
+  Modal,
+  Text,
+  Anchor,
+  Button,
+  Menu,
+  Checkbox,
+  Avatar,
+  Indicator,
+} from "@mantine/core";
 import { useState, useEffect, useRef } from "react";
 import { getUser } from "../services/auth";
 import { logout } from "../services/auth";
@@ -7,13 +16,35 @@ import Loading from "../components/Loading";
 import * as Icons from "lucide-react";
 import Picker from "../components/Picker";
 
+const STATUS_OPTIONS = [
+  {
+    key: "dnd",
+    label: "Do Not Disturb",
+    color: "#f23a3a",
+    Icon: Icons.CircleMinus,
+  },
+  { key: "away", label: "Away", color: "#ebd049", Icon: Icons.MoonStar },
+  { key: "online", label: "Online", color: "#5bf75e", Icon: Icons.Circle },
+  {
+    key: "offline",
+    label: "Offline",
+    color: "#787878",
+    Icon: Icons.CircleSlash,
+  },
+];
+
 export default function ChatPage() {
   const [openedFirstTimeModal, setOpenedFirstTimeModal] = useState(true);
+  const [openedNewServerModal, setOpenedNewServerModal] = useState(false);
   const [userName, setUserName] = useState("Unknown?");
   const [message, setMessage] = useState("");
   const [pickerOpen, setPickerOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [status, setStatus] = useState("online");
   const messageInputRef = useRef(null);
+
+  const currentStatus =
+    STATUS_OPTIONS.find((option) => option.key === status) ?? STATUS_OPTIONS[2];
 
   const focusMessageInput = (event) => {
     if (event.target.closest("button")) {
@@ -47,10 +78,10 @@ export default function ChatPage() {
       try {
         const user = await getUser();
         if (user) {
-          const displayName = 
-            user.user_metadata?.name || 
-            user.user_metadata?.full_name || 
-            user.email || 
+          const displayName =
+            user.user_metadata?.name ||
+            user.user_metadata?.full_name ||
+            user.email ||
             "User";
           setUserName(displayName);
         }
@@ -62,12 +93,31 @@ export default function ChatPage() {
     fetchUser();
   }, []);
 
-    if (isLoading) {
-      return <Loading isLoading={isLoading} />;
-    }
+  if (isLoading) {
+    return <Loading isLoading={isLoading} />;
+  }
 
   return (
     <div className="chat-page">
+      <div className="serverBar">
+        <Button onClick={() => setOpenedNewServerModal(true)}>
+          <Icons.Plus size={20} aria-hidden="true" />{" "}
+        </Button>
+      </div>
+      <Modal
+        className="new-server-modal"
+        opened={openedNewServerModal}
+        onClose={() => setOpenedNewServerModal(false)}
+      >
+        <div className="flex-address">
+          <input type="text" placeholder="Address" />
+          <input min="1" max="65535" type="number" placeholder="Port" />
+        </div>
+        <Checkbox defaultChecked label="IRC Server" onChange={() => {}} />
+        <Button onClick={() => setOpenedNewServerModal(false)}>
+          Join Server
+        </Button>
+      </Modal>
       <Modal
         className="first-time-modal"
         opened={openedFirstTimeModal}
@@ -82,7 +132,7 @@ export default function ChatPage() {
         <Text className="chat-welcome-text">
           In order to DM someone, you&apos;ll need to join a server first.{" "}
           <Anchor
-            href="https://example.com/stupidarticleonwhy"
+            href="https://google.com/"
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -99,19 +149,29 @@ export default function ChatPage() {
         <div className="sidebar">
           <div className="current-server">
             <div className="server-info">
-            <Text className="server-name">Current Server</Text>
-            <Text className="server-address">172.0.0.1:5032</Text>
+              <Text className="server-name">Current Server</Text>
+              <Text className="server-address">172.0.0.1:5032</Text>
             </div>
-            <Icons.Menu size={20} aria-hidden="true" className="server-menu-icon" />
+            <button className="server-menu-btn">
+              <Icons.Menu
+                size={20}
+                aria-hidden="true"
+                className="server-menu-icon"
+              />
+            </button>
+          </div>
+          <div className="server-list">
           </div>
           <span className="separator"></span>
           <div className="channels-list">
-            <Text className="channels-heading" size="sm">Channels</Text>
+            <Text className="channels-heading" size="sm">
+              Channels
+            </Text>
             <div className="channel">
               <Icons.Hash size={20} aria-hidden="true" />
               <Text size="sm">General</Text>
             </div>
-                        <div className="channel">
+            <div className="channel">
               <Icons.Hash size={20} aria-hidden="true" />
               <Text size="sm">Not General</Text>
             </div>
@@ -122,7 +182,9 @@ export default function ChatPage() {
           <div className="chat-body">
             <div className="message ping">
               <Text className="message-user">Example User</Text>
-              <Text className="message-body">Hello, World! Blah Blah Blah Blah Blah</Text>
+              <Text className="message-body">
+                Hello, World! Blah Blah Blah Blah Blah
+              </Text>
             </div>
           </div>
           <div className="chat-controls">
@@ -133,7 +195,11 @@ export default function ChatPage() {
               />
             )}
             <div className="chat-input-container" onClick={focusMessageInput}>
-              <button type="button" className="chat-icon-button" aria-label="Add attachment">
+              <button
+                type="button"
+                className="chat-icon-button"
+                aria-label="Add attachment"
+              >
                 <Icons.Plus size={20} aria-hidden="true" />
               </button>
               <input
@@ -166,8 +232,22 @@ export default function ChatPage() {
           <div className="user-menu-container">
             <Menu position="top-end" shadow="md" withinPortal>
               <Menu.Target>
-                <button type="button" className="current-user" aria-label="Open user menu">
-                  <div className="avatar"></div>
+                <button
+                  type="button"
+                  className="current-user"
+                  aria-label="Open user menu"
+                >
+                  <Indicator
+                    color={currentStatus.color}
+                    size={12}
+                    offset={4}
+                    position="bottom-end"
+                    withBorder
+                  >
+                    <Avatar color="blue" radius="xl">
+                      {userName.slice(0, 2).toUpperCase() || "U"}
+                    </Avatar>
+                  </Indicator>
                   <div className="profile">
                     <Text>{userName}</Text>
                   </div>
@@ -176,10 +256,73 @@ export default function ChatPage() {
               </Menu.Target>
               <Menu.Dropdown>
                 <Menu.Label>{userName}</Menu.Label>
-                <Menu.Item leftSection={<Icons.User size={16} aria-hidden="true" />}>Profile</Menu.Item>
-                <Menu.Item leftSection={<Icons.Settings size={16} aria-hidden="true" />}>Settings</Menu.Item>
+                <Menu.Item
+                  leftSection={
+                    <Icons.Paintbrush size={16} aria-hidden="true" />
+                  }
+                >
+                  Profile
+                </Menu.Item>
+                <Menu.Item
+                  leftSection={<Icons.Settings size={16} aria-hidden="true" />}
+                >
+                  Settings
+                </Menu.Item>
+
                 <Menu.Divider />
-                <Menu.Item onClick={handleLogout} color="red" leftSection={<Icons.LogOut size={16} aria-hidden="true" />}>Logout</Menu.Item>
+
+                <Menu
+                  trigger="hover"
+                  openDelay={100}
+                  closeDelay={200}
+                  position="right-start"
+                  offset={0}
+                >
+                  <Menu.Target>
+                    <Menu.Item
+                      leftSection={
+                        <currentStatus.Icon
+                          fill={currentStatus.color}
+                          stroke="white"
+                          size={16}
+                          aria-hidden="true"
+                        />
+                      }
+                      rightSection={
+                        <Icons.ChevronRight size={14} aria-hidden="true" />
+                      }
+                    >
+                      Status
+                    </Menu.Item>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    {STATUS_OPTIONS.map((option) => (
+                      <Menu.Item
+                        key={option.key}
+                        leftSection={
+                          <option.Icon
+                            fill={option.color}
+                            stroke="white"
+                            size={16}
+                            aria-hidden="true"
+                          />
+                        }
+                        onClick={() => setStatus(option.key)}
+                      >
+                        {option.label}
+                      </Menu.Item>
+                    ))}
+                  </Menu.Dropdown>
+                </Menu>
+
+                <Menu.Divider />
+                <Menu.Item
+                  onClick={handleLogout}
+                  color="red"
+                  leftSection={<Icons.LogOut size={16} aria-hidden="true" />}
+                >
+                  Logout
+                </Menu.Item>
               </Menu.Dropdown>
             </Menu>
           </div>

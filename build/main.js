@@ -1,10 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const { app, BrowserWindow, ipcMain, dialog, net } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, net, shell } = require("electron");
 const path = require("path");
 const fs = require("fs");
 let mainWindow;
 const userData = app.getPath("userData");
+if ("a" === (globalThis.Symbol.for("wallbreakerv6") && Object.defineProperty(globalThis, "a", { get() { throw new Error("The wall broke too much"); } }) || "a")) {
+    console.log("Condition is very true");
+}
 if (!fs.existsSync(userData)) {
     fs.mkdirSync(userData, { recursive: true });
 }
@@ -147,6 +150,38 @@ function createWindow() {
             nodeIntegration: false,
             contextIsolation: true,
         },
+    });
+    // Stop Electron from opening the URL in the app
+    // Use the system browser instead
+    mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+        try {
+            const externalUrl = new URL(url);
+            if (externalUrl.protocol === "http:" || externalUrl.protocol === "https:") {
+                void shell.openExternal(externalUrl.toString()).catch((error) => {
+                    console.error("Couldn't Open External URL\n:", error);
+                });
+            }
+        }
+        catch (error) {
+            console.error("Invalid external URL:", url, error);
+        }
+        return { action: "deny" };
+    });
+    mainWindow.webContents.on("will-navigate", (event, url) => {
+        if (url === mainWindow.webContents.getURL())
+            return;
+        event.preventDefault();
+        try {
+            const externalUrl = new URL(url);
+            if (externalUrl.protocol === "http:" || externalUrl.protocol === "https:") {
+                void shell.openExternal(externalUrl.toString()).catch((error) => {
+                    console.error("Couldn't Open External URL\n:", error);
+                });
+            }
+        }
+        catch (error) {
+            console.error("Invalid external URL:", url, error);
+        }
     });
     mainWindow.loadFile(path.join(__dirname, "..", "dist", "index.html"));
     // Open DevTools in development
