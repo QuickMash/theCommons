@@ -42,7 +42,7 @@
     "electron-store": "^11.0.2",
     "emoji-picker-element": "^1.29.1",
     "gif-picker-react": "^2.0.0",
-    "handlebars": "^4.7.8",
+    "handlebars": "^4.7.10",
     "irc-framework": "^4.14.0",
     "lucide-react": "^0.468.0",
     "react": "^19.1.1",
